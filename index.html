@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<meta charset="UTF-8">
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="To do list web app">
+<meta name="author" content="Asif Abdul Rahiman">
+<title>To Do List</title>
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.4/angular.min.js"></script>
+<link rel="stylesheet" type="text/css" href="mystyle.css">
+<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">  
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.5.0/css/bootstrap-datepicker.css" rel="stylesheet">  
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.js"></script>  
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.5.0/js/bootstrap-datepicker.js"></script> </head>
+
+<script>
+var app = angular.module("myTODOList", []); 
+app.controller("myCtrl", function($scope, $filter,$http) {
+    $scope.todos = [];
+	 
+    $http({
+      method: 'GET',
+      url: 'get.php'
+   }).then(function (success){
+   
+	var _len = success.data.length;
+  var  post, i;
+
+  for (i = 0; i < _len; i++) {
+    //debugger
+    post = success.data[i];
+	status=0;
+	var status=post.status;
+	var Check;
+	if(status==1)
+	{
+		Check='checked';
+	}
+	else
+	{
+		Check='';
+	}
+    $scope.todos.push({'Title':post.title,'Duedate':post.duedate,'Type':post.type,'Check':Check});
+  }
+   },function (error){
+	alert(error);
+   });  
+    
+    $scope.addItem = function () {
+        $scope.errortext = "";
+		$scope.adddate = $("#example1").val();
+		
+        if (!$scope.addMe||!$scope.adddate||!$scope.addtype) {alert("Please fill all the details");return;} 
+		$("#example1").val('');
+		var ntodo={'Title':$scope.addMe,'Duedate':$scope.adddate,'Type':$scope.addtype};
+		var newtodo=true;
+		angular.forEach($scope.todos, function(item) {
+			if( item.Title.indexOf(ntodo.Title)==0){
+				if( item.Duedate.indexOf(ntodo.Duedate)==0){
+					if( item.Type.indexOf(ntodo.Type)==0){
+						newtodo=false;}}}
+			});
+			if(newtodo)
+			{
+				$scope.todos.push(ntodo);
+				var data1=$scope.addMe;
+				var data2=$scope.adddate;
+				var data3=$scope.addtype;
+				var dataString = 'title='+ data1 + '&duedate='+ data2 + '&type='+ data3;
+				$scope.addMe=""
+				$scope.adddate=""
+				$scope.addtype=""
+				
+				$.ajax({
+				type: "POST",
+				url: "add.php",
+				data: dataString,
+				cache: false,
+				success: function(result){}
+				});
+				
+				
+			}
+			else{
+				alert('Todo already present');
+			}
+		
+		
+           
+    }
+    $scope.removeItem = function (x) {
+		var index = $scope.todos.indexOf(x);
+		if (index != -1) {
+        $scope.errortext = ""; 
+		var datastring = 'title='+ $scope.todos[index].Title + '&duedate='+ $scope.todos[index].Duedate + '&type='+ $scope.todos[index].Type;
+		$.ajax({
+		type: "POST",
+		url: "remove.php",
+		data: datastring,
+		cache: false,
+		success: function(result){}
+		});
+        $scope.todos.splice(index, 1);
+		}
+    }
+	$scope.changestatus = function (x) {
+		var index = $scope.todos.indexOf(x);
+		if (index != -1) {
+		var datastring = 'title='+ $scope.todos[index].Title + '&duedate='+ $scope.todos[index].Duedate + '&type='+ $scope.todos[index].Type;
+		var Check=$scope.todos[index].Check;
+		if(Check=="checked")
+		{
+			$scope.todos[index].Check="";
+			datastring=datastring+'&status=0';
+		}
+		else{
+			$scope.todos[index].Check="checked";
+			datastring=datastring+'&status=1';
+		}
+		$.ajax({
+		type: "POST",
+		url: "change.php",
+		data: datastring,
+		cache: false,
+		success: function(result){}
+		});
+        }
+		
+    }
+	$scope.reset = function () {
+		$scope.mindate =null;
+		$scope.maxdate =null;
+		$("#example3").val("").datepicker("update");
+		$("#example2").val("").datepicker("update");
+        }
+		
+    
+	$('#example2').datepicker({
+                            autoclose: true,  
+							format: "yyyy-mm-dd",
+							}).on('changeDate', function (ev) {$scope.mindate = $("#example2").val();$scope.$apply();});
+	$('#example3').datepicker({
+                            autoclose: true,  
+							format: "yyyy-mm-dd",
+							}).on('changeDate', function (ev) {$scope.maxdate = $("#example3").val();$scope.$apply();});
+				
+});
+app.filter('rangeFilter', function() {
+    return function( items, filtext1, filtext2 ) {
+		
+		if(filtext1&&filtext2)
+		{
+			var filtered = [];
+			angular.forEach(items, function(item) {
+				if( item.Duedate >= filtext1 && item.Duedate <= filtext2 ) {
+					filtered.push(item);
+				}
+			});
+			return filtered;
+		}
+		else if(filtext1)
+		{
+			var filtered = [];
+			angular.forEach(items, function(item) {
+				if( item.Duedate >= filtext1 ) {
+					filtered.push(item);
+				}
+			});
+			return filtered;
+		}
+		else if(filtext2)
+		{
+			var filtered = [];
+			angular.forEach(items, function(item) {
+				if(item.Duedate <= filtext2 ) {
+					filtered.push(item);
+				}
+			});
+			return filtered;
+		}
+		else
+		return items;
+        
+    };
+});
+</script>
+<script type="text/javascript">
+                // When the document is ready
+                $(document).ready(function () {
+                    
+                    $('#example1').datepicker({
+                            autoclose: true,  
+							format: "yyyy-mm-dd",
+							startDate: '0d'
+                    });  
+                });
+            </script>
+<body ng-app="myTODOList" ng-controller="myCtrl">
+<div class="header1">
+<img src="logo.jpg" class="logo"/>
+<h2 style="margin-left:6%">To do list web app</h2>
+</div>
+<div class="header">
+  <h2>Add a new Event....</h2>
+<div >
+<input type="text" placeholder="Enter your activity here....." ng-model="addMe">
+<span ng-click="addItem()" class="addBtn styled-select semi-square">Add</span>
+<select class="typeBtn styled-select semi-square" ng-model="addtype">
+    <option value="">Select your activity type.....</option>
+    <option value="Personal">Personal</option>
+    <option value="Work">Work</option>
+	<option value="Shopping">Shopping</option>
+	<option value="Others">Others</option>
+  </select>
+  <input type="text" id="example1" class="dateBtn styled-select semi-square" placeholder="Select Due date here....."   />
+
+  
+</div>
+</div>
+
+<div class="header">
+ <a style="float:right;margin-top:2%;color:black;" ng-click="reset()">clear</a>
+ <input type="text" style="margin-top:1%;float: right;" id="example3" class="dateBtn styled-select semi-square" placeholder="Filter end date here....."   ng-model="maxdate"  />
+ <input type="text" style="margin-top:1%;float: right;" id="example2" class="dateBtn styled-select semi-square" placeholder="Filter start date here....." ng-model="mindate"  />
+ <label style="background:inherit; width: inherit;margin-left:1%;" class="filtBtn">Filter by Date:</label>
+  <select  class="filtBtn styled-select semi-square" ng-model="filtertype">
+    <option value="">Select your activity type.....</option>
+    <option value="Personal">Personal</option>
+    <option value="Work">Work</option>
+	<option value="Shopping">Shopping</option>
+	<option value="Others">Others</option>
+  </select>
+  <label style="background:inherit; width: inherit;margin-left:1%;" class="filtBtn">Filter by Type:</label>
+ </div> 
+
+
+<ul >
+    <li ng-repeat="x in todos | orderBy:'Duedate'| rangeFilter:mindate:maxdate| filter:{ Type: filtertype }" ng-click="changestatus(x)"  class="{{x.Check}}" >{{x.Title}}   Type:{{x.Type}}   Duedate:{{x.Duedate}}<span style="float:right" ng-click="removeItem(x)">clear</span></li>
+  </ul>
+</body>
+
+</html>
